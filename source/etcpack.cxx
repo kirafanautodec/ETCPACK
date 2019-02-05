@@ -457,45 +457,13 @@ bool readSrcFile(char *filename,uint8 *&img,int &width,int &height, int &expande
 	int wdiv4, hdiv4;
 	char str[255];
 
-
-	// Delete temp file if it exists.
-	if(fileExist("tmp.ppm"))
-	{
-		sprintf(str, "del tmp.ppm\n");
-		system(str);
-	}
-
-	int q = find_pos_of_extension(filename);
-	if(!strcmp(&filename[q],".ppm")) 
-	{
-		// Already a .ppm file. Just copy. 
-		sprintf(str,"copy %s tmp.ppm \n", filename);
-		printf("Copying source file to tmp.ppm\n", filename);
-	}
-	else
-	{
-		// Converting from other format to .ppm 
-		// 
-		// Use your favorite command line image converter program,
-		// for instance Image Magick. Just make sure the syntax can
-		// be written as below:
-		// 
-		// C:\magick convert source.jpg dest.ppm
-		//
-		sprintf(str,"magick convert %s tmp.ppm\n", filename);
-		printf("Converting source file from %s to .ppm\n", filename);
-	}
-	// Execute system call
-	system(str);
-
 	int bitrate=8;
 	if(format==ETC2PACKAGE_RG_NO_MIPMAPS)
 		bitrate=16;
-	if(fReadPPM("tmp.ppm",w1,h1,img,bitrate))
+	if(fReadPPM(filename,w1,h1,img,bitrate))
 	{
 		width=w1;
 		height=h1;
-		system("del tmp.ppm");
 
 		// Width must be divisible by 4 and height must be
 		// divisible by 4. Otherwise, we will expand the image
@@ -540,274 +508,13 @@ bool readSrcFile(char *filename,uint8 *&img,int &width,int &height, int &expande
 	}
 	else
 	{
-		printf("Could not read tmp.ppm file\n");
+		printf("Could not read %s file\n", filename);
 		exit(1);	
 	}
 	return false;
 
 }
 
-// Reads a file without expanding it to be divisible by 4.
-// Is used when doing PSNR calculation between two files.
-// NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-bool readSrcFileNoExpand(char *filename,uint8 *&img,int &width,int &height)
-{
-	int w1,h1;
-	char str[255];
-
-
-	// Delete temp file if it exists.
-	if(fileExist("tmp.ppm"))
-	{
-		sprintf(str, "del tmp.ppm\n");
-		system(str);
-	}
-
-
-	int q = find_pos_of_extension(filename);
-	if(!strcmp(&filename[q],".ppm")) 
-	{
-		// Already a .ppm file. Just copy. 
-		sprintf(str,"copy %s tmp.ppm \n", filename);
-		printf("Copying source file to tmp.ppm\n", filename);
-	}
-	else
-	{
-		// Converting from other format to .ppm 
-		// 
-		// Use your favorite command line image converter program,
-		// for instance Image Magick. Just make sure the syntax can
-		// be written as below:
-		// 
-		// C:\magick convert source.jpg dest.ppm
-		//
-		sprintf(str,"magick convert %s tmp.ppm\n", filename);
-//		printf("Converting source file from %s to .ppm\n", filename);
-	}
-	// Execute system call
-	system(str);
-
-	if(fReadPPM("tmp.ppm",w1,h1,img,8))
-	{
-		width=w1;
-		height=h1;
-		system("del tmp.ppm");
-
-		return true;
-	}
-	return false;
-}
-
-// Parses the arguments from the command line.
-// NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void readArguments(int argc,char *argv[],char* src,char *dst)
-{
-	int q;
-
-	//new code!! do this in a more nicer way!
-	bool srcfound=false,dstfound=false;
-	for(int i=1; i<argc; i++) 
-	{
-		//loop through the arguments!
-		//first check for flags..
-		if(argv[i][0]=='-') 
-		{
-			if(i==argc-1) 
-			{
-				printf("flag missing argument: %s!\n");
-				exit(1);
-			}
-			//handle speed flag
-			if(!strcmp(argv[i],"-s"))  
-			{
-				// We have argument -s. Now check for slow, medium or fast.
-				if(!strcmp(argv[i+1],"slow")) 
-					speed = SPEED_SLOW;
-				else if(!strcmp(argv[i+1],"medium")) 
-					speed = SPEED_MEDIUM;
-				else if(!strcmp(argv[i+1],"fast")) 
-					speed = SPEED_FAST;
-				else 
-				{
-					printf("Error: %s not part of flag %s\n",argv[i+1], argv[i]);
-					exit(1);
-				}
-			}
-			//handle verbose flag
-			else if(!strcmp(argv[i],"-v"))  
-			{
-				// We have argument -s. Now check for slow, medium or fast.
-				if(!strcmp(argv[i+1],"off")) 
-					verbose = false;
-				else if(!strcmp(argv[i+1],"on")) 
-					verbose = true;
-				else 
-				{
-					printf("Error: %s not part of flag %s\n",argv[i+1], argv[i]);
-					exit(1);
-				}
-			}
-			//error metric flag
-			else if(!strcmp(argv[i],"-e")) 	
-			{
-				// We have argument -e. Now check for perceptual or nonperceptual
-				if(!strcmp(argv[i+1],"perceptual")) 
-					metric = METRIC_PERCEPTUAL;
-				else if(!strcmp(argv[i+1],"nonperceptual")) 
-					metric = METRIC_NONPERCEPTUAL;
-				else 
-				{
-					printf("Error: %s not part of flag %s\n",argv[i+1], argv[i]);
-					exit(1);
-				}
-			}
-			//codec flag
-			else if(!strcmp(argv[i],"-c")) 
-			{
-				// We have argument -c. Now check for perceptual or nonperceptual
-				if(!strcmp(argv[i+1],"etc") || !strcmp(argv[i+1],"etc1"))
-					codec = CODEC_ETC;
-				else if(!strcmp(argv[i+1],"etc2")) 
-					codec = CODEC_ETC2;
-				else 
-				{
-					printf("Error: %s not part of flag %s\n",argv[i+1], argv[i]);
-					exit(1);
-				}
-			}
-			//format flag
-			else if(!strcmp(argv[i],"-f")) 
-			{
-				if(!strcmp(argv[i+1],"R"))
-					format=ETC2PACKAGE_R_NO_MIPMAPS;
-				else if(!strcmp(argv[i+1],"RG"))
-					format=ETC2PACKAGE_RG_NO_MIPMAPS;
-				else if(!strcmp(argv[i+1],"R_signed")) 
-				{
-					format=ETC2PACKAGE_R_NO_MIPMAPS;
-					formatSigned=1;
-				}
-				else if(!strcmp(argv[i+1],"RG_signed")) 
-				{
-					format=ETC2PACKAGE_RG_NO_MIPMAPS;
-					formatSigned=1;
-				}
-				else if(!strcmp(argv[i+1],"RGB"))
-					format=ETC2PACKAGE_RGB_NO_MIPMAPS;
-				else if(!strcmp(argv[i+1],"sRGB"))
-					format=ETC2PACKAGE_sRGB_NO_MIPMAPS;
-				else if(!strcmp(argv[i+1],"RGBA")||!strcmp(argv[i+1],"RGBA8"))
-					format=ETC2PACKAGE_RGBA_NO_MIPMAPS;
-				else if(!strcmp(argv[i+1],"sRGBA")||!strcmp(argv[i+1],"sRGBA8"))
-					format=ETC2PACKAGE_sRGBA_NO_MIPMAPS;
-				else if(!strcmp(argv[i+1],"RGBA1"))
-					format=ETC2PACKAGE_RGBA1_NO_MIPMAPS;
-				else if(!strcmp(argv[i+1],"sRGBA1"))
-					format=ETC2PACKAGE_sRGBA1_NO_MIPMAPS;
-				else 
-				{
-					printf("Error: %s not part of flag %s\n",argv[i+1], argv[i]);
-					exit(1);
-				}
-			}
-			else if(!strcmp(argv[i],"-p")) 
-			{
-				mode=MODE_PSNR;
-				i--; //ugly way of negating the increment of i done later because -p doesn't have an argument.
-			}
-			else 
-			{
-				printf("Error: cannot interpret flag %s %s\n",argv[i], argv[i+1]);
-				exit(1);
-			}
-			//don't read the flag argument next iteration..
-			i++;
-		}
-		//this isn't a flag, so must be src or dst
-		else 
-		{
-			if(srcfound&&dstfound) 
-			{
-				printf("too many arguments! expecting src, dst; found %s, %s, %s\n",src,dst,argv[i]);
-				exit(1);
-			}
-			else if(srcfound) 
-			{
-				strcpy(dst,argv[i]);
-				dstfound=true;
-			}
-			else 
-			{
-				strcpy(src,argv[i]);
-				srcfound=true;
-			}
-		}
-	}
-	if(!srcfound&&dstfound) 
-	{
-		printf("too few arguments! expecting src, dst\n");
-		exit(1);
-	}
-	if(mode==MODE_PSNR)
-		return;
-	//check source/destination.. is this compression or decompression?
-	q = find_pos_of_extension(src);
-	if(q<0) 
-	{
-		printf("invalid source file: %s\n",src);
-		exit(1);
-	}
-
-	// If we have etcpack img.pkm img.any
-
-	if(!strncmp(&src[q],".pkm",4)) 
-	{
-		// First argument is .pkm. Decompress. 
-		mode = MODE_UNCOMPRESS;			// uncompress from binary file format .pkm
-	}
-	else if(!strncmp(&src[q],".ktx",4)) 
-	{
-		// First argument is .ktx. Decompress. 
-		mode = MODE_UNCOMPRESS;			// uncompress from binary file format .pkm
-		ktxFile=true;
-		printf("decompressing ktx\n");
-	}
-	else
-	{
-		// The first argument was not .pkm. The second argument must then be .pkm.
-		q = find_pos_of_extension(dst);
-		if(q<0) 
-		{
-			printf("invalid destination file: %s\n",src);
-			exit(1);
-		}
-		if(!strncmp(&dst[q],".pkm",4)) 
-		{
-			// Second argument is .pkm. Compress. 
-			mode = MODE_COMPRESS;			// compress to binary file format .pkm
-		}
-		else if(!strncmp(&dst[q],".ktx",4)) 
-		{
-			// Second argument is .ktx. Compress. 
-			ktxFile=true;
-			mode = MODE_COMPRESS;			// compress to binary file format .pkm
-			printf("compressing to ktx\n");
-		}
-		else 
-		{
-			printf("source or destination must be a .pkm or .ktx file\n");
-			exit(1);
-		}
-	}
-	//do some sanity check stuff..
-	if(codec==CODEC_ETC&&format!=ETC2PACKAGE_RGB_NO_MIPMAPS) 
-	{
-		printf("ETC1 codec only supports RGB format\n");
-		exit(1);
-	}
-	else if(codec==CODEC_ETC)
-		format=ETC1_RGB_NO_MIPMAPS;
-}
 
 static int compressParams[16][4];
 const int compressParamsFast[32] = {  -8,  -2,  2,   8,
@@ -9457,73 +9164,18 @@ void writeOutputFile(char *dstfile, uint8* img, uint8* alphaimg, int width, int 
 
 	if(format!=ETC2PACKAGE_R_NO_MIPMAPS&&format!=ETC2PACKAGE_RG_NO_MIPMAPS) 
 	{
-		fWritePPM("tmp.ppm",width,height,img,8,false);
-		printf("Saved file tmp.ppm \n\n");
+		fWritePPM(dstfile,width,height,img,8,false);
+		printf("Saved file %s \n\n", dstfile);
 	}
 	else if(format==ETC2PACKAGE_RG_NO_MIPMAPS) 
 	{
-		fWritePPM("tmp.ppm",width,height,img,16,false);
+		fWritePPM(dstfile,width,height,img,16,false);
 	}
 	if(format==ETC2PACKAGE_RGBA_NO_MIPMAPS||format==ETC2PACKAGE_RGBA1_NO_MIPMAPS||format==ETC2PACKAGE_sRGBA_NO_MIPMAPS||format==ETC2PACKAGE_sRGBA1_NO_MIPMAPS)
-		fWritePGM("alphaout.pgm",width,height,alphaimg,false,8);
+		fWritePGM(dstfile,width,height,alphaimg,false,8);
 	if(format==ETC2PACKAGE_R_NO_MIPMAPS)
-		fWritePGM("alphaout.pgm",width,height,alphaimg,false,16);
+		fWritePGM(dstfile,width,height,alphaimg,false,16);
 
-	// Delete destination file if it exists
-	if(fileExist(dstfile))
-	{
-		sprintf(str, "del %s\n",dstfile);	
-		system(str);
-	}
-
-	int q = find_pos_of_extension(dstfile);
-	if(!strcmp(&dstfile[q],".ppm")&&format!=ETC2PACKAGE_R_NO_MIPMAPS) 
-	{
-		// Already a .ppm file. Just rename. 
-		sprintf(str,"move tmp.ppm %s\n",dstfile);
-		printf("Renaming destination file to %s\n",dstfile);
-	}
-	else
-	{
-		// Converting from .ppm to other file format
-		// 
-		// Use your favorite command line image converter program,
-		// for instance Image Magick. Just make sure the syntax can
-		// be written as below:
-		// 
-		// C:\magick convert source.ppm dest.jpg
-		//
-		if(format==ETC2PACKAGE_RGBA_NO_MIPMAPS||format==ETC2PACKAGE_RGBA1_NO_MIPMAPS||format==ETC2PACKAGE_sRGBA_NO_MIPMAPS||format==ETC2PACKAGE_sRGBA1_NO_MIPMAPS) 
-		{
-            // Somewhere after version 6.7.1-2 of ImageMagick the following command gives the wrong result due to a bug. 
-			// sprintf(str,"composite -compose CopyOpacity alphaout.pgm tmp.ppm %s\n",dstfile);
-            // Instead we read the file and write a tga.
-
-			printf("Converting destination file from .ppm/.pgm to %s with alpha\n",dstfile);
-            int rw, rh;
-            unsigned char *pixelsRGB;
-            unsigned char *pixelsA;
-			fReadPPM("tmp.ppm", rw, rh, pixelsRGB, 8);
-            fReadPGM("alphaout.pgm", rw, rh, pixelsA, 8);
-			fWriteTGAfromRGBandA(dstfile, rw, rh, pixelsRGB, pixelsA, true);
-            free(pixelsRGB);
-            free(pixelsA);
-            sprintf(str,""); // Nothing to execute.
-		}
-		else if(format==ETC2PACKAGE_R_NO_MIPMAPS) 
-		{
-			sprintf(str,"magick convert alphaout.pgm %s\n",dstfile);
-			printf("Converting destination file from .pgm to %s\n",dstfile);
-		}
-		else 
-		{
-			sprintf(str,"magick convert tmp.ppm %s\n",dstfile);
-			printf("Converting destination file from .ppm to %s\n",dstfile);
-		}
-	}
-	// Execute system call
-	system(str);
-	
 	free(img);
 	if(alphaimg!=NULL)
 		free(alphaimg);
@@ -15882,9 +15534,6 @@ void compressFile(char *srcfile,char *dstfile)
 	uint8 *srcimg;
 	int width,height;
 	int extendedwidth, extendedheight;
-	struct _timeb tstruct;
-	int tstart;
-	int tstop;
 	// 0: compress from .any to .pkm with SPEED_FAST, METRIC_NONPERCEPTUAL, ETC 
 	// 1: compress from .any to .pkm with SPEED_MEDIUM, METRIC_NONPERCEPTUAL, ETC
 	// 2: compress from .any to .pkm with SPEED_SLOW, METRIC_NONPERCEPTUAL, ETC
@@ -15959,14 +15608,7 @@ void compressFile(char *srcfile,char *dstfile)
 			}
 			printf("Compressing...\n");
 
-			tstart=time(NULL);
-			_ftime( &tstruct );
-			tstart=tstart*1000+tstruct.millitm;
 			compressImageFile(srcimg,alphaimg,width,height,dstfile,extendedwidth, extendedheight);			
-			tstop = time(NULL);
-			_ftime( &tstruct );
-			tstop = tstop*1000+tstruct.millitm;
-			printf( "It took %u milliseconds to compress:\n", tstop - tstart);
 			calculatePSNRfile(dstfile,srcimg,alphaimg);
 		}
 	}
@@ -15976,110 +15618,33 @@ void compressFile(char *srcfile,char *dstfile)
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 double calculatePSNRTwoFiles(char *srcfile1,char *srcfile2)
 {
-	uint8 *srcimg1;
-	uint8 *srcimg2;
-	int width1, height1;
-	int width2, height2;
-	double PSNR;
-	double perceptually_weighted_PSNR;
-
-	if(readSrcFileNoExpand(srcfile1,srcimg1,width1,height1))
-	{
-		if(readSrcFileNoExpand(srcfile2,srcimg2,width2,height2))
-		{
-			if((width1 == width2) && (height1 == height2))
-			{
-				PSNR = calculatePSNR(srcimg1, srcimg2, width1, height1);
-				printf("%f\n",PSNR);
-				perceptually_weighted_PSNR = calculateWeightedPSNR(srcimg1, srcimg2, width1, height1, 0.299, 0.587, 0.114);
-			}
-			else
-			{
-				printf("\n Width and height do no not match for image: width, height = (%d, %d) and (%d, %d)\n",width1,height1, width2, height2);
-			}
-		}
-		else
-		{
-			printf("Couldn't open file %s.\n",srcfile2);
-		}
-	}
-	else
-	{
-		printf("Couldn't open file %s.\n",srcfile1);
-	}
-
-	return PSNR;
+    return 0.0;
 }
 
 // Main function
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-int main(int argc,char *argv[])
+int main(int argc, char *argv[])
 {
-	if(argc==3 || argc==4 || argc == 5 || argc == 7 || argc == 9 || argc == 11 || argc == 13)
+    if (argc != 3)
+    {
+        printf("Usage: etcpack_mod <file.pkm> <file.ppm>");
+        exit(-1);
+    }
+
+    char* srcfile = argv[1];
+    char* dstfile = argv[2];
+
+	if(!fileExist(srcfile))
 	{
-		// The source file is always the second last one. 
-		char srcfile[200];
-		char dstfile[200];
-		readArguments(argc,argv,srcfile,dstfile);
-		
-		int q = find_pos_of_extension(srcfile);
-		int q2 = find_pos_of_extension(dstfile);
-		
-		if(!fileExist(srcfile))
-		{
-			printf("Error: file <%s> does not exist.\n",srcfile);
-			exit(0);
-		}
-		
-		if(mode==MODE_UNCOMPRESS)
-		{
-			printf("Decompressing .pkm/.ktx file ...\n");
-			uint8* alphaimg=NULL, *img;
-			int w, h;
-			uncompressFile(srcfile,img,alphaimg,w,h);
-			writeOutputFile(dstfile,img,alphaimg,w,h);
-		}
-		else if(mode==MODE_PSNR)
-		{
-			calculatePSNRTwoFiles(srcfile,dstfile);
-		}
-		else
-		{
-			compressFile(srcfile, dstfile);
-		}
+		printf("Error: file <%s> does not exist.\n", srcfile);
+		exit(2);
 	}
-	else
-	{
-		printf("ETCPACK v2.74 For ETC and ETC2\n");
-		printf("Compresses and decompresses images using the Ericsson Texture Compression (ETC) version 1.0 and 2.0.\n\nUsage: etcpack srcfile dstfile\n\n");
-		printf("      -s {fast|slow}                     Compression speed. Slow = exhaustive \n");
-		printf("                                         search for optimal quality\n");
-		printf("                                         (default: fast)\n");
-		printf("      -e {perceptual|nonperceptual}      Error metric: Perceptual (nicest) or \n");
-		printf("                                         nonperceptual (highest PSNR)\n");
-		printf("                                         (default: perceptual)\n");
-		printf("      -c {etc1|etc2}                     Codec: etc1 (most compatible) or \n");
-		printf("                                         etc2 (highest quality)\n");
-		printf("                                         (default: etc2)\n");
-		printf("      -f {R|R_signed|RG|RG_signed|       Format: one, two, three or four \n");
-		printf("          RGB|RGBA1|RGBA8|               channels, and 1 or 8 bits for alpha\n");
-        printf("          sRGB|sRGBA1|sRGBA8|}           RGB or sRGB.\n");
-		printf("                                         (1 equals punchthrough)\n");
-		printf("                                         (default: RGB)\n");
-		printf("      -v {on|off}                        Detailed progress info. (default on)\n");
-		printf("                                                            \n");
-		printf("Examples: \n");
-		printf("  etcpack img.ppm img.pkm                Compresses img.ppm to img.pkm in\n"); 
-		printf("                                         ETC2 RGB format\n");
-		printf("  etcpack img.ppm img.ktx                Compresses img.ppm to img.ktx in\n"); 
-		printf("                                         ETC2 RGB format\n");
-		printf("  etcpack img.pkm img_copy.ppm           Decompresses img.pkm to img_copy.ppm\n");
-		printf("  etcpack -s slow img.ppm img.pkm        Compress using the slow mode.\n");
-		printf("  etcpack -p orig.ppm copy.ppm           Calculate PSNR between orig and copy\n");
-		printf("  etcpack -f RGBA8 img.tga img.pkm       Compresses img.tga to img.pkm, using \n");
-		printf("                                         etc2 + alpha.\n");
-		printf("  etcpack -f RG img.ppm img.pkm          Compresses red and green channels of\n");
-		printf("                                         img.ppm\n");
-	}
+	
+	printf("Decompressing .pkm/.ktx file ...\n");
+	uint8* alphaimg=NULL, *img;
+	int w, h;
+	uncompressFile(srcfile, img, alphaimg, w, h);
+	writeOutputFile(dstfile, img, alphaimg, w, h);
+
  	return 0;
 }
